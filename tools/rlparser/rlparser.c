@@ -1523,6 +1523,7 @@ static const char *GetMachType(char* ret, char* _name) {
     else if(strcmp("unsigned int", tname) == 0) strcpy(pt, "u32"), pt+=3;
     else if(strcmp("const int", tname) == 0) strcpy(pt, "i32"), pt+=3;
     else if(strcmp("float", tname) == 0) strcpy(pt, "f32"), pt+=3;
+    else if(strcmp("const float", tname) == 0) strcpy(pt, "f32"), pt+=3;
     else if(strcmp("va_list", tname) == 0) strcpy(pt, "..."), pt+=3;
     else if(strcmp("double", tname) == 0) strcpy(pt, "f64"), pt+=3;
     else if(strcmp("long", tname) == 0) strcpy(pt, "i32"), pt+=3;
@@ -2384,7 +2385,7 @@ static void ExportParsedData(const char *fileName, int format)
                 }
                 if(callbacks[i].retType[0] != 0) {
                     memset(ret, 0, 32);
-                    fprintf(outFile, "): %s\n", GetMachType(ret, callbacks[i].retType));
+                    fprintf(outFile, ") %s;\n", GetMachType(ret, callbacks[i].retType));
                 } else fprintf(outFile, ")\n");
                 /*if (callbacks[i].paramCount == 0) fprintf(outFile, "  No input parameters\n");*/
             }
@@ -2413,7 +2414,7 @@ static void ExportParsedData(const char *fileName, int format)
                 /*if (funcs[i].paramCount == 0) fprintf(outFile, "  No input parameters\n");*/
                 if(funcs[i].retType[0] != 0) {
                     memset(ret, 0, 32);
-                    fprintf(outFile, "): %s\n", GetMachType(ret, funcs[i].retType));
+                    fprintf(outFile, ") %s;\n", GetMachType(ret, funcs[i].retType));
                 } else fprintf(outFile, ")\n");
             }
         } break;
