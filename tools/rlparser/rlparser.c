@@ -80,7 +80,8 @@
 // Types and Structures Definition
 //----------------------------------------------------------------------------------
 
-#define MAXLEN 65535
+#include <string.h>
+#define MAXLEN 655350
 
 // Define value type
 typedef enum {
@@ -638,7 +639,7 @@ int main(int argc, char *argv[])
                 // Scan one field line
                 char *fieldLine = linesPtr[l];
                 int fieldEndPos = 0;
-                while (fieldLine[fieldEndPos] != ';') fieldEndPos++;
+                while (fieldLine[fieldEndPos] != ';' && fieldLine[fieldEndPos]) fieldEndPos++;
 
                 if ((fieldLine[0] != '/') && !IsTextEqual(fieldLine, "struct", 6)) // Field line is not a comment and not a struct declaration
                 {
@@ -1245,12 +1246,14 @@ static char **LoadTextLines(const char *buffer, int length, int *lineCount)
 
     // Allocate as many pointers as lines
     char **lines = (char **)malloc(count*sizeof(char **));
+    memset(lines, 0, count * sizeof(char**));
 
     char *bufferPtr = (char *)buffer;
 
     for (int i = 0; (i < count) || (bufferPtr[0] != '\0'); i++)
     {
         lines[i] = (char *)calloc(MAX_LINE_LENGTH, sizeof(char)); // MAX_LINE_LENGTH=1024
+        memset(lines[i], 0, MAX_LINE_LENGTH);
 
         // Remove line leading spaces
         // Find last index of space/tab character
@@ -1485,7 +1488,6 @@ static const char *StrMachType(DefineType type, char* name)
     /*return "";*/
 /*}*/
 
-#include <string.h>
 static const char *GetMachType(char* ret, char* _name) {
     int n = strlen(_name);
     int is_pt = 0;
@@ -2263,23 +2265,24 @@ static void ExportParsedData(const char *fileName, int format)
         } break;
 
         case CODE:
-        //./raylib_parser -i raylib.h -o raylib.oc -f CODE
+        //./raylib_parser -i raylib.h -o raylib.mach -f CODE
         {
             // Print defines info
             /*fprintf(outFile, "\nDefines found: %i\n\n", defineCount);*/
             /*const char* name = defines[i].name;*/
             /*int type = defines[i]*/
 
-            char _fileBuf[MAXLEN] = {0};
+            static char _fileBuf[MAXLEN] = {0};
             {
                 // add base header
-                if(GetFileBuf("raylib.header.mach", _fileBuf, MAXLEN) < 1) {
+                if(GetFileBuf("_header.mach", _fileBuf, MAXLEN) < 1) {
                     perror("read base_file errorr");
                 }
                 fprintf(outFile, "%s", _fileBuf);
             }
+
             if(strstr(inFileName, "raylib.h")) {
-                if(GetFileBuf("raylib.base.mach", _fileBuf, MAXLEN) < 1) {
+                if(GetFileBuf("_raylib.base.mach", _fileBuf, MAXLEN) < 1) {
                     perror("read base_file errorr");
                 }
                 fprintf(outFile, "%s\n", _fileBuf);
@@ -2312,7 +2315,7 @@ static void ExportParsedData(const char *fileName, int format)
 
             // Print structs info
             /*fprintf(outFile, "\nStructures found: %i\n\n", structCount);*/
-            char ret[32] = {0};
+            char ret[256] = {0};
             for (int i = 0; i < structCount; i++)
             {
                 fprintf(outFile, "pub rec %s {\n", structs[i].name);
