@@ -82,6 +82,7 @@
 
 #include <string.h>
 #define MAXLEN 655350
+char snakeFnBuf[4096];
 
 // Define value type
 typedef enum {
@@ -1550,6 +1551,47 @@ static const char *GetMachType(char* ret, char* _name) {
     strcpy(ret, name);
     return ret;
 }
+int FindExcessWord(const char* name) {
+    static const char* _excess_words[] = {
+        "rl_", "gui_"
+    };
+    int ret = 0;
+    int nlen = strlen(name);
+    if(nlen < 2) return 0;
+    int count = sizeof(_excess_words)/sizeof(_excess_words[0]);
+    int wlen = 0;
+    for (int i = 0; i < count; i++) {
+        wlen = strlen(_excess_words[i]);
+        if(nlen <= wlen) continue;
+        for (int j = 0; j < wlen; j++) {
+            if(name[j] == _excess_words[i][j]) ++ret;
+        }
+        if(ret == wlen) break;
+        else ret = 0;
+    }
+    return ret;
+}
+
+void CamelToSnake(const char *camel, char *snake) {
+    int j = 0;
+    for (int i = 0; camel[i] != '\0'; i++) {
+        if (isupper((unsigned char)camel[i])) {
+            if (i > 0) {
+                char prev = camel[i - 1];
+                char next = camel[i + 1];
+                if (islower(prev) || isdigit(prev)) {
+                    snake[j++] = '_';
+                } else if (isupper(prev) && next != '\0' && islower(next)) {
+                    snake[j++] = '_';
+                }
+            }
+            snake[j++] = tolower((unsigned char)camel[i]);
+        } else {
+            snake[j++] = camel[i];
+        }
+    }
+    snake[j] = '\0';
+}
 
 long GetFileBuf(const char* pFileName, char* buf, long size) {
     if (buf == NULL) return -1;
@@ -2392,30 +2434,59 @@ static void ExportParsedData(const char *fileName, int format)
 
             // Print functions info
             /*fprintf(outFile, "\nFunctions found: %i\n\n", funcCount);*/
+            static char _fun_name[64] = {0};
+            static char _call_fun[256] = {0};
+            int _sfb_size = sizeof(_call_fun);
+            int _sfb_len = 0;
+            int _cf_size = sizeof(_call_fun);
+            int _cf_len = 0;
             for (int i = 0; i < funcCount; i++)
             {
-                fprintf(outFile, "pub ext fun %s(", funcs[i].name);
+                _sfb_len = 0; _cf_len = 0;
+                memset(snakeFnBuf, 0, sizeof(snakeFnBuf));
+                memset(_fileBuf, 0, sizeof(_fileBuf));
+                memset(_call_fun, 0, sizeof(_call_fun));
+                CamelToSnake(funcs[i].name, _fun_name);
+                int j = FindExcessWord(_fun_name);
+                /*fprintf(outFile, "#[library(\"raylib\")] #[symbol(\"%s\")]\n", funcs[i].name);*/
+                fprintf(outFile, "#[library(\"raylib\")]\n");
+                fprintf(outFile, "ext fun %s(", funcs[i].name);
+                _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, "pub fun %s(", _fun_name + j);
+                _cf_len += snprintf(_call_fun+_cf_len, _cf_size-_cf_len, "%s(", funcs[i].name);
                 /*fprintf(outFile, "  Name: %s\n", funcs[i].name);*/
                 /*fprintf(outFile, "  Return type: %s\n", funcs[i].retType);*/
                 /*fprintf(outFile, "  Description: %s\n", funcs[i].desc);*/
                 for (int p = 0; p < funcs[i].paramCount; p++) {
                     memset(ret, 0, 32);
                     GetMachType(ret, funcs[i].paramType[p]);
-                    if(strcmp(ret, "...")==0)
+                    if(strcmp(ret, "...")==0) {
                         fprintf(outFile, "%s", ret);
-                    else if((p+1) < funcs[i].paramCount)
+                        _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, "%s", ret);
+                    }
+                    else if((p+1) < funcs[i].paramCount) {
                         fprintf(outFile, "%s: %s, ", funcs[i].paramName[p], ret);
+                        _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, "%s: %s, ", funcs[i].paramName[p], ret);
+                        _cf_len += snprintf(_call_fun+_cf_len, _cf_size-_cf_len, "%s, ", funcs[i].paramName[p]);
+                    }
                         /*fprintf(outFile, "%s: %s, ", funcs[i].paramName[p], GetMachType(ret, funcs[i].paramType[p]));*/
 
-                    else
+                    else {
                         fprintf(outFile, "%s: %s", funcs[i].paramName[p], ret);
+                        _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, "%s: %s", funcs[i].paramName[p], ret);
+                        _cf_len += snprintf(_call_fun+_cf_len, _cf_size-_cf_len, "%s", funcs[i].paramName[p]);
+                    }
                         /*fprintf(outFile, "%s: %s", funcs[i].paramName[p], GetMachType(ret, funcs[i].paramType[p]));*/
                 }
                 /*if (funcs[i].paramCount == 0) fprintf(outFile, "  No input parameters\n");*/
                 if(funcs[i].retType[0] != 0) {
                     memset(ret, 0, 32);
                     fprintf(outFile, ") %s;\n", GetMachType(ret, funcs[i].retType));
-                } else fprintf(outFile, ")\n");
+                    _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, ") %s { ret %s); }\n", GetMachType(ret, funcs[i].retType), _call_fun);
+                } else {
+                    fprintf(outFile, ")\n");
+                    _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, ") %s { %s); }\n", GetMachType(ret, funcs[i].retType), _call_fun);
+                }
+                fprintf(outFile, "%s", snakeFnBuf);
             }
         } break;
         default: break;
