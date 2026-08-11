@@ -1,6 +1,6 @@
-EXTENSION?=txt
-FORMAT?=DEFAULT
-.PHONY: all parse clean raylib_api
+EXTENSION?=mach
+FORMAT?=CODE
+.PHONY: all parse clean mach 
 
 # Determine PLATFORM_OS
 # No uname.exe on MinGW!, but OS=Windows_NT on Windows!
@@ -71,15 +71,17 @@ endif
 #------------------------------------------------------------------------------------------------
 # rlparser compilation
 rlparser: rlparser.c
-	$(CC) rlparser.c -o rlparser $(CFLAGS)
+	#$(CC) rlparser.c -o rlparser $(CFLAGS)
+	$(CC) -g -fsanitize=address rlparser.c -o rlparser $(CFLAGS)
 
 # rlparser execution: [raylib.h] parse, generating some output files
 raylib_api: ../../src/raylib.h rlparser
-	FORMAT=DEFAULT EXTENSION=txt $(MAKE) raylib_api.txt
-	FORMAT=JSON EXTENSION=json $(MAKE) raylib_api.json
-	FORMAT=XML EXTENSION=xml $(MAKE) raylib_api.xml
-	FORMAT=LUA EXTENSION=lua $(MAKE) raylib_api.lua
-	FORMAT=SEXPR EXTENSION=sexpr $(MAKE) raylib_api.sexpr
+	FORMAT=CODE EXTENSION=mach $(MAKE) raylib.mach
+#FORMAT=DEFAULT EXTENSION=txt $(MAKE) raylib_api.txt
+#FORMAT=JSON EXTENSION=json $(MAKE) raylib_api.json
+#FORMAT=XML EXTENSION=xml $(MAKE) raylib_api.xml
+#FORMAT=LUA EXTENSION=lua $(MAKE) raylib_api.lua
+#FORMAT=SEXPR EXTENSION=sexpr $(MAKE) raylib_api.sexpr
 
 # rlparser execution: [raylib.h] parse, generating some output files
 raylib_api.$(EXTENSION): ../../src/raylib.h rlparser
@@ -104,17 +106,26 @@ raygui_api.$(EXTENSION): ../raygui.h rlparser
 # Target to generate required APIs output files
 parse: raylib_api.$(EXTENSION) raymath_api.$(EXTENSION) rlgl_api.$(EXTENSION) raygui_api.$(EXTENSION)
 
+mach: rlparser
+	./rlparser -i ../../src/raylib.h -o raylib.$(EXTENSION) -f $(FORMAT) -d RLAPI
+	./rlparser -i ../../src/raymath.h -o raymath.$(EXTENSION) -f $(FORMAT) -d RMAPI
+	./rlparser -i ../../src/rlgl.h -o rlgl.$(EXTENSION) -f $(FORMAT) -d RLAPI -t "RLGL IMPLEMENTATION"
+	./rlparser -i ../../src/rcamera.h -o rcamera.$(EXTENSION) -f $(FORMAT) -d RLAPI -t "RLGL IMPLEMENTATION"
+	./rlparser -i ../../examples/text/raygui.h -o raygui.$(EXTENSION) -f $(FORMAT) -d RAYGUIAPI -t "RAYGUI IMPLEMENTATION"
+
 # "make parse" (and therefore "make all") requires
 # raygui.h and reasings_api.h to exist in the correct directory
 # API files for individual headers can be created likeso, provided the relevant header exists:
 # FORMAT=JSON EXTENSION=json make raygui_api.json
 all: rlparser
-	FORMAT=DEFAULT EXTENSION=txt $(MAKE) parse
-	FORMAT=JSON EXTENSION=json $(MAKE) parse
-	FORMAT=XML EXTENSION=xml $(MAKE) parse
-	FORMAT=LUA EXTENSION=lua $(MAKE) parse
-	FORMAT=SEXPR EXTENSION=sexpr $(MAKE) parse
+	FORMAT=CODE EXTENSION=mach $(MAKE) mach
+	#FORMAT=DEFAULT EXTENSION=txt $(MAKE) parse
+	#FORMAT=JSON EXTENSION=json $(MAKE) parse
+	#FORMAT=XML EXTENSION=xml $(MAKE) parse
+	#FORMAT=LUA EXTENSION=lua $(MAKE) parse
+	#FORMAT=SEXPR EXTENSION=sexpr $(MAKE) parse
 
 # Clean rlparser and generated output files 
 clean:
 	rm -f rlparser *.json *.txt *.xml *.lua *.sexpr
+	rm -f raylib.mach raymath.mach rlgl.mach raygui.mach rcamera.mach

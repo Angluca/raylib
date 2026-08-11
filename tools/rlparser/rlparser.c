@@ -80,6 +80,10 @@
 // Types and Structures Definition
 //----------------------------------------------------------------------------------
 
+#include <string.h>
+#define MAXLEN 655350
+char snakeFnBuf[4096];
+
 // Define value type
 typedef enum {
     UNKNOWN = 0,
@@ -636,7 +640,7 @@ int main(int argc, char *argv[])
                 // Scan one field line
                 char *fieldLine = linesPtr[l];
                 int fieldEndPos = 0;
-                while (fieldLine[fieldEndPos] != ';') fieldEndPos++;
+                while (fieldLine[fieldEndPos] != ';' && fieldLine[fieldEndPos]) fieldEndPos++;
 
                 if ((fieldLine[0] != '/') && !IsTextEqual(fieldLine, "struct", 6)) // Field line is not a comment and not a struct declaration
                 {
@@ -1243,12 +1247,14 @@ static char **LoadTextLines(const char *buffer, int length, int *lineCount)
 
     // Allocate as many pointers as lines
     char **lines = (char **)malloc(count*sizeof(char **));
+    memset(lines, 0, count * sizeof(char**));
 
     char *bufferPtr = (char *)buffer;
 
     for (int i = 0; (i < count) || (bufferPtr[0] != '\0'); i++)
     {
         lines[i] = (char *)calloc(MAX_LINE_LENGTH, sizeof(char)); // MAX_LINE_LENGTH=1024
+        memset(lines[i], 0, MAX_LINE_LENGTH);
 
         // Remove line leading spaces
         // Find last index of space/tab character
@@ -1440,6 +1446,173 @@ static const char *StrDefineType(DefineType type)
     return "";
 }
 
+static const char *StrMachType(DefineType type, char* name)
+{
+    switch (type)
+    {
+        case UNKNOWN:     return "bool";
+        case GUARD:       return "bool";
+        case MACRO:       return name;
+        case INT:         return "i32";
+        case INT_MATH:    return "i32";
+        case LONG:        return "i64";
+        case LONG_MATH:   return "i64";
+        case FLOAT:       return "f32";
+        case FLOAT_MATH:  return "f32";
+        case DOUBLE:      return "f64";
+        case DOUBLE_MATH: return "f64";
+        case CHAR:        return "u8";
+        case STRING:      return "str";
+        case COLOR:       return "Color";
+    }
+    return "";
+}
+/*static const char *StrMachDf(DefineType type)*/
+/*{*/
+    /*switch (type)*/
+    /*{*/
+        /*case UNKNOWN:     return "val";*/
+        /*case GUARD:       return "val";*/
+        /*case MACRO:       return "def";*/
+        /*case INT:         return "val";*/
+        /*case INT_MATH:    return "val";*/
+        /*case LONG:        return "val";*/
+        /*case LONG_MATH:   return "val";*/
+        /*case FLOAT:       return "val";*/
+        /*case FLOAT_MATH:  return "val";*/
+        /*case DOUBLE:      return "val";*/
+        /*case DOUBLE_MATH: return "val";*/
+        /*case CHAR:        return "val";*/
+        /*case STRING:      return "val";*/
+        /*case COLOR:       return "val";*/
+    /*}*/
+    /*return "";*/
+/*}*/
+
+static const char *GetMachType(char* ret, char* _name) {
+    int n = strlen(_name);
+    int is_pt = 0;
+    int is_arr = 0;
+    int i = 0;
+    char tname[64] = {0};
+    strcpy(tname, _name);
+    for(; i<n; ++i) {
+        if(tname[i] == '*') {
+            is_pt = i;
+            tname[i] = 0;
+            tname[i-1] = 0;
+            break;
+        }
+        if(tname[i] == '[') {
+            is_arr = i;
+            tname[i] = 0;
+        }
+    }
+    char name[64] = {0};
+    char* pt = name;
+    if(is_arr) {
+        *pt = '[';
+        pt += 1;
+        strcpy(pt, &tname[is_arr+1]);
+        pt += strlen(&tname[is_arr+1]);
+    }
+    if(is_pt) {
+        *pt = '*';
+        pt += 1;
+    }
+    if(strcmp("int", tname) == 0) strcpy(pt, "i32"), pt+=3;
+    else if(strcmp("unsigned int", tname) == 0) strcpy(pt, "u32"), pt+=3;
+    else if(strcmp("const int", tname) == 0) strcpy(pt, "i32"), pt+=3;
+    else if(strcmp("float", tname) == 0) strcpy(pt, "f32"), pt+=3;
+    else if(strcmp("const float", tname) == 0) strcpy(pt, "f32"), pt+=3;
+    else if(strcmp("va_list", tname) == 0) strcpy(pt, "..."), pt+=3;
+    else if(strcmp("double", tname) == 0) strcpy(pt, "f64"), pt+=3;
+    else if(strcmp("long", tname) == 0) strcpy(pt, "i32"), pt+=3;
+    else if(strcmp("longlong", tname) == 0) strcpy(pt, "i64"), pt+=3;
+    else if(strcmp("unsigned short", tname) == 0) strcpy(pt, "u16"), pt+=3;
+    else if(strcmp("const unsigned char", tname) == 0) strcpy(pt, "u8"), pt+=2;
+    else if(strcmp("const GlyphInfo", tname) == 0) strcpy(pt, "GlyphInfo"), pt+=9;
+    else if(strcmp("const Matrix", tname) == 0) strcpy(pt, "Matrix"), pt+=6;
+    else if(strcmp("unsigned char", tname) == 0) strcpy(pt, "u8"), pt+=2;
+    else if(strcmp("const char", tname) == 0) strcpy(pt, "u8"), pt+=2;
+    else if(strcmp("char", tname) == 0) strcpy(pt, "u8"), pt+=2;
+    else if(strcmp("const void", tname) == 0) if(pt-name > 0) strcpy(pt-1, "ptr"),pt+=3; else strcpy(pt, "u8"),pt+=2;
+    else if(strcmp("void", tname) == 0) if(pt-name > 0) strcpy(pt-1, "ptr"),pt+=3; else strcpy(pt, "u8"),pt+=2;
+    else {
+        const char* pname = tname;
+        while(memcmp("const ", pname, 6) == 0) { pname += 6; }
+        strcpy(pt, pname),pt+=strlen(pname);
+    }
+    /*if(is_arr) {*/
+        /**(pt) = ']';*/
+        /**(pt+1) = ' ';*/
+        /*strcpy(pt+2, &tname[is_arr+1]);*/
+    /*}*/
+    strcpy(ret, name);
+    return ret;
+}
+int FindExcessWord(const char* name) {
+    static const char* _excess_words[] = {
+        "rl_", "gui_"
+    };
+    int ret = 0;
+    int nlen = strlen(name);
+    if(nlen < 2) return 0;
+    int count = sizeof(_excess_words)/sizeof(_excess_words[0]);
+    int wlen = 0;
+    for (int i = 0; i < count; i++) {
+        wlen = strlen(_excess_words[i]);
+        if(nlen <= wlen) continue;
+        for (int j = 0; j < wlen; j++) {
+            if(name[j] == _excess_words[i][j]) ++ret;
+        }
+        if(ret == wlen) break;
+        else ret = 0;
+    }
+    return ret;
+}
+
+void CamelToSnake(const char *camel, char *snake) {
+    int j = 0;
+    for (int i = 0; camel[i] != '\0'; i++) {
+        if (isupper((unsigned char)camel[i])) {
+            if (i > 0) {
+                char prev = camel[i - 1];
+                char next = camel[i + 1];
+                if (islower(prev) || isdigit(prev)) {
+                    snake[j++] = '_';
+                } else if (isupper(prev) && next != '\0' && islower(next)) {
+                    snake[j++] = '_';
+                }
+            }
+            snake[j++] = tolower((unsigned char)camel[i]);
+        } else {
+            snake[j++] = camel[i];
+        }
+    }
+    snake[j] = '\0';
+}
+
+long GetFileBuf(const char* pFileName, char* buf, long size) {
+    if (buf == NULL) return -1;
+    FILE *fp = fopen(pFileName, "rb");     /* 二进制模式，避免 \r\n 被转换 */
+    if (!fp) { perror("fopen"); return -1; }
+
+    fseek(fp, 0, SEEK_END);
+    long len = ftell(fp);
+    if (len >= size) len = size - 1;
+    rewind(fp);                            /* 等价于 fseek(fp, 0, SEEK_SET) */
+
+    /*char *buf = malloc(len + 1);            [> +1 给 \0 留位置 <]*/
+    if (!buf) { fclose(fp); return 1; }
+
+    size_t got = fread(buf, 1, len, fp);
+    buf[got] = '\0';                       /* 当字符串用必须补 \0 */
+    fclose(fp);
+    return len;
+    /*printf("%s", buf);*/
+    /*free(buf);*/
+}
 /*
 // Replace text string
 // REQUIRES: strlen(), strstr(), strncpy(), strcpy() -> TODO: Replace by custom implementations!
@@ -2135,6 +2308,188 @@ static void ExportParsedData(const char *fileName, int format)
         } break;
 
         case CODE:
+        //./raylib_parser -i raylib.h -o raylib.mach -f CODE
+        {
+            // Print defines info
+            /*fprintf(outFile, "\nDefines found: %i\n\n", defineCount);*/
+            /*const char* name = defines[i].name;*/
+            /*int type = defines[i]*/
+
+            static char _fileBuf[MAXLEN] = {0};
+            {
+                // add base header
+                if(GetFileBuf("_header.mach", _fileBuf, MAXLEN) < 1) {
+                    perror("read base_file errorr");
+                }
+                fprintf(outFile, "%s", _fileBuf);
+            }
+
+            if(strstr(inFileName, "raylib.h")) {
+                if(GetFileBuf("_raylib.base.mach", _fileBuf, MAXLEN) < 1) {
+                    perror("read base_file errorr");
+                }
+                fprintf(outFile, "%s\n", _fileBuf);
+            }
+            else
+            for (int i = 0; i < defineCount; i++)
+            {
+                switch(defines[i].type) {
+                    case UNKNOWN:
+                    case GUARD:
+                    case MACRO:
+                        break;
+                    /*default: {*/
+                        /*const char* dname = StrMachDf(defines[i].type);*/
+                        /*fprintf(outFile, "#[symbol(\"%s\")] pub %s %s: %s;\n", defines[i].name, dname, defines[i].name, StrMachType(defines[i].type, defines[i].value));*/
+                    /*}*/
+                    default: {
+                        /*const char* dname = StrMachDf(defines[i].type);*/
+                        fprintf(outFile, "pub val %s: %s = %s;\n", defines[i].name, StrMachType(defines[i].type, defines[i].value), defines[i].value);
+                    }
+                }
+
+                /*fprintf(outFile, "Define %03i: %s\n", i + 1, defines[i].name);*/
+                /*fprintf(outFile, "  Name: %s\n", defines[i].name);*/
+                /*fprintf(outFile, "  Type: %s\n", StrDefineType(defines[i].type));*/
+                /*fprintf(outFile, "  Value: %s\n", defines[i].value);*/
+                /*if(defines[i].desc[0] != 0)*/
+                    /*fprintf(outFile, "  //%s\n", defines[i].desc);*/
+            }
+
+            // Print structs info
+            /*fprintf(outFile, "\nStructures found: %i\n\n", structCount);*/
+            char ret[256] = {0};
+            for (int i = 0; i < structCount; i++)
+            {
+                fprintf(outFile, "pub rec %s {\n", structs[i].name);
+                /*fprintf(outFile, "  Name: %s\n", structs[i].name);*/
+                /*fprintf(outFile, "  Description: %s\n", structs[i].desc);*/
+                for (int f = 0; f < structs[i].fieldCount; f++)
+                {
+                    memset(ret, 0, 32);
+                    fprintf(outFile, "      %s: %s;", structs[i].fieldName[f], GetMachType(ret, structs[i].fieldType[f]));
+                    /*if (structs[i].fieldDesc[f][0]) fprintf(outFile, "      // %s\n", structs[i].fieldDesc[f]);*/
+                    /*else fprintf(outFile, "\n");*/
+                    fprintf(outFile, "\n");
+                }
+                fprintf(outFile, "}\n");
+            }
+
+            // Print aliases info
+            /*fprintf(outFile, "\nAliases found: %i\n\n", aliasCount);*/
+            for (int i = 0; i < aliasCount; i++)
+            {
+                const char* pname = aliases[i].name;
+                if(pname[0] == '*') {
+                    pname += 1;
+                    fprintf(outFile, "pub def %s: *%s;\n", pname, aliases[i].type);
+                } else {
+                    fprintf(outFile, "pub def %s: %s;\n", pname, aliases[i].type);
+                }
+                /*fprintf(outFile, "Alias %03i: %s\n", i + 1, aliases[i].name);*/
+                /*fprintf(outFile, "  Type: %s\n", aliases[i].type);*/
+                /*fprintf(outFile, "  Name: %s\n", aliases[i].name);*/
+                /*fprintf(outFile, "  Description: %s\n", aliases[i].desc);*/
+            }
+
+            // Print enums info
+            /*fprintf(outFile, "\nEnums found: %i\n\n", enumCount);*/
+            for (int i = 0; i < enumCount; i++)
+            {
+                /*fprintf(outFile, "[extern] enum %s {\n", enums[i].name);*/
+                /*fprintf(outFile, "  Name: %s\n", enums[i].name);*/
+                /*fprintf(outFile, "  Description: %s\n", enums[i].desc);*/
+                for (int e = 0; e < enums[i].valueCount; e++)
+                    /*fprintf(outFile, "    %s = %i\n", enums[i].valueName[e], enums[i].valueInteger[e]);*/
+                    fprintf(outFile, "pub val %s: i32 = %i;\n", enums[i].valueName[e], enums[i].valueInteger[e]);
+
+                /*fprintf(outFile, "}\n");*/
+            }
+
+            // Print callbacks info
+            /*fprintf(outFile, "\nCallbacks found: %i\n\n", callbackCount);*/
+            for (int i = 0; i < callbackCount; i++)
+            {
+                fprintf(outFile, "pub def %s: fun(", callbacks[i].name);
+                /*fprintf(outFile, "Callback %03i: %s() (%i input parameters)\n", i + 1, callbacks[i].name, callbacks[i].paramCount);*/
+                /*fprintf(outFile, "  Name: %s\n", callbacks[i].name);*/
+                /*fprintf(outFile, "  Return type: %s\n", callbacks[i].retType);*/
+                /*fprintf(outFile, "  Description: %s\n", callbacks[i].desc);*/
+                for (int p = 0; p < callbacks[i].paramCount; p++) {
+                    memset(ret, 0, 32);
+                    /*fprintf(outFile, "  Param[%i]: %s (type: %s)\n", p + 1, callbacks[i].paramName[p], callbacks[i].paramType[p]);*/
+                    if((p+1) < callbacks[i].paramCount)
+                        /*fprintf(outFile, "%s: %s, ", callbacks[i].paramName[p], GetMachType(ret, callbacks[i].paramType[p]));*/
+                        fprintf(outFile, "%s, ", GetMachType(ret, callbacks[i].paramType[p]));
+                    else
+                        /*fprintf(outFile, "%s: %s", callbacks[i].paramName[p], GetMachType(ret, callbacks[i].paramType[p]));*/
+                        fprintf(outFile, "%s", GetMachType(ret, callbacks[i].paramType[p]));
+                }
+                if(callbacks[i].retType[0] != 0) {
+                    memset(ret, 0, 32);
+                    fprintf(outFile, ") %s;\n", GetMachType(ret, callbacks[i].retType));
+                } else fprintf(outFile, ")\n");
+                /*if (callbacks[i].paramCount == 0) fprintf(outFile, "  No input parameters\n");*/
+            }
+
+            // Print functions info
+            /*fprintf(outFile, "\nFunctions found: %i\n\n", funcCount);*/
+            static char _fun_name[64] = {0};
+            static char _call_fun[1024] = {0};
+            int _sfb_size = sizeof(_call_fun);
+            int _sfb_len = 0;
+            int _cf_size = sizeof(_call_fun);
+            int _cf_len = 0;
+            for (int i = 0; i < funcCount; i++)
+            {
+                _sfb_len = 0; _cf_len = 0;
+                memset(snakeFnBuf, 0, sizeof(snakeFnBuf));
+                memset(_fileBuf, 0, sizeof(_fileBuf));
+                memset(_call_fun, 0, sizeof(_call_fun));
+                CamelToSnake(funcs[i].name, _fun_name);
+                int j = FindExcessWord(_fun_name);
+                /*fprintf(outFile, "#[library(\"raylib\")] #[symbol(\"%s\")]\n", funcs[i].name);*/
+                fprintf(outFile, "#[library(\"raylib\")]\n");
+                fprintf(outFile, "ext fun %s(", funcs[i].name);
+                _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, "pub fun %s(", _fun_name + j);
+                _cf_len += snprintf(_call_fun+_cf_len, _cf_size-_cf_len, "%s(", funcs[i].name);
+                /*fprintf(outFile, "  Name: %s\n", funcs[i].name);*/
+                /*fprintf(outFile, "  Return type: %s\n", funcs[i].retType);*/
+                /*fprintf(outFile, "  Description: %s\n", funcs[i].desc);*/
+                for (int p = 0; p < funcs[i].paramCount; p++) {
+                    memset(ret, 0, 32);
+                    GetMachType(ret, funcs[i].paramType[p]);
+                    if(strcmp(ret, "...")==0) {
+                        fprintf(outFile, "va: %s", ret);
+                        _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, "va: %s", ret);
+                        _cf_len += snprintf(_call_fun+_cf_len, _cf_size-_cf_len, "va%s", ret);
+                    }
+                    else if((p+1) < funcs[i].paramCount) {
+                        fprintf(outFile, "%s: %s, ", funcs[i].paramName[p], ret);
+                        _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, "%s: %s, ", funcs[i].paramName[p], ret);
+                        _cf_len += snprintf(_call_fun+_cf_len, _cf_size-_cf_len, "%s, ", funcs[i].paramName[p]);
+                    }
+                        /*fprintf(outFile, "%s: %s, ", funcs[i].paramName[p], GetMachType(ret, funcs[i].paramType[p]));*/
+
+                    else {
+                        fprintf(outFile, "%s: %s", funcs[i].paramName[p], ret);
+                        _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, "%s: %s", funcs[i].paramName[p], ret);
+                        _cf_len += snprintf(_call_fun+_cf_len, _cf_size-_cf_len, "%s", funcs[i].paramName[p]);
+                    }
+                        /*fprintf(outFile, "%s: %s", funcs[i].paramName[p], GetMachType(ret, funcs[i].paramType[p]));*/
+                }
+                /*if (funcs[i].paramCount == 0) fprintf(outFile, "  No input parameters\n");*/
+                if(funcs[i].retType[0] != 0) {
+                    memset(ret, 0, 32);
+                    fprintf(outFile, ") %s;\n", GetMachType(ret, funcs[i].retType));
+                    _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, ") %s { ret %s); }\n", GetMachType(ret, funcs[i].retType), _call_fun);
+                } else {
+                    fprintf(outFile, ")\n");
+                    _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, ") %s { %s); }\n", GetMachType(ret, funcs[i].retType), _call_fun);
+                }
+                fprintf(outFile, "%s", snakeFnBuf);
+            }
+        } break;
         default: break;
     }
 
