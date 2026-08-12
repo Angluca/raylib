@@ -2316,13 +2316,11 @@ static void ExportParsedData(const char *fileName, int format)
             /*int type = defines[i]*/
 
             static char _fileBuf[MAXLEN] = {0};
-            {
-                // add base header
-                if(GetFileBuf("_header.mach", _fileBuf, MAXLEN) < 1) {
-                    perror("read base_file errorr");
-                }
-                fprintf(outFile, "%s", _fileBuf);
+            // add base header
+            if(GetFileBuf("_header.mach", _fileBuf, MAXLEN) < 1) {
+                perror("read base_file errorr");
             }
+            fprintf(outFile, "%s", _fileBuf);
 
             if(strstr(inFileName, "raylib.h")) {
                 if(GetFileBuf("_raylib.base.mach", _fileBuf, MAXLEN) < 1) {
@@ -2330,32 +2328,38 @@ static void ExportParsedData(const char *fileName, int format)
                 }
                 fprintf(outFile, "%s\n", _fileBuf);
             }
-            else
-            for (int i = 0; i < defineCount; i++)
-            {
-                switch(defines[i].type) {
-                    case UNKNOWN:
-                    case GUARD:
-                    case MACRO:
-                        break;
-                    /*default: {*/
-                        /*const char* dname = StrMachDf(defines[i].type);*/
-                        /*fprintf(outFile, "#[symbol(\"%s\")] pub %s %s: %s;\n", defines[i].name, dname, defines[i].name, StrMachType(defines[i].type, defines[i].value));*/
-                    /*}*/
-                    default: {
-                        /*const char* dname = StrMachDf(defines[i].type);*/
-                        fprintf(outFile, "pub val %s: %s = %s;\n", defines[i].name, StrMachType(defines[i].type, defines[i].value), defines[i].value);
+            else {
+                if(strstr(inFileName, "rlgl.h")) {
+                    if(GetFileBuf("_rlgl.base.mach", _fileBuf, MAXLEN) < 1) {
+                        perror("read base_file errorr");
                     }
+                    fprintf(outFile, "%s\n", _fileBuf);
                 }
+                for (int i = 0; i < defineCount; i++)
+                {
+                    switch(defines[i].type) {
+                        case UNKNOWN:
+                        case GUARD:
+                        case MACRO:
+                            break;
+                        /*default: {*/
+                            /*const char* dname = StrMachDf(defines[i].type);*/
+                            /*fprintf(outFile, "#[symbol(\"%s\")] pub %s %s: %s;\n", defines[i].name, dname, defines[i].name, StrMachType(defines[i].type, defines[i].value));*/
+                        /*}*/
+                        default: {
+                            /*const char* dname = StrMachDf(defines[i].type);*/
+                            fprintf(outFile, "pub val %s: %s = %s;\n", defines[i].name, StrMachType(defines[i].type, defines[i].value), defines[i].value);
+                        }
+                    }
 
-                /*fprintf(outFile, "Define %03i: %s\n", i + 1, defines[i].name);*/
-                /*fprintf(outFile, "  Name: %s\n", defines[i].name);*/
-                /*fprintf(outFile, "  Type: %s\n", StrDefineType(defines[i].type));*/
-                /*fprintf(outFile, "  Value: %s\n", defines[i].value);*/
-                /*if(defines[i].desc[0] != 0)*/
-                    /*fprintf(outFile, "  //%s\n", defines[i].desc);*/
+                    /*fprintf(outFile, "Define %03i: %s\n", i + 1, defines[i].name);*/
+                    /*fprintf(outFile, "  Name: %s\n", defines[i].name);*/
+                    /*fprintf(outFile, "  Type: %s\n", StrDefineType(defines[i].type));*/
+                    /*fprintf(outFile, "  Value: %s\n", defines[i].value);*/
+                    /*if(defines[i].desc[0] != 0)*/
+                        /*fprintf(outFile, "  //%s\n", defines[i].desc);*/
+                }
             }
-
             // Print structs info
             /*fprintf(outFile, "\nStructures found: %i\n\n", structCount);*/
             char ret[256] = {0};
