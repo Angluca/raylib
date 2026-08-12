@@ -127,5 +127,5 @@ all: rlparser
 
 # Clean rlparser and generated output files 
 clean:
-	rm -f rlparser *.json *.txt *.xml *.lua *.sexpr
+	rm -f rlparser *.json *.txt *.xml *.lua *.sexpr *.dSYM
 	rm -f raylib.mach raymath.mach rlgl.mach raygui.mach rcamera.mach

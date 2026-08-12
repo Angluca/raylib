@@ -1498,10 +1498,12 @@ static const char *GetMachType(char* ret, char* _name) {
     strcpy(tname, _name);
     for(; i<n; ++i) {
         if(tname[i] == '*') {
-            ++is_pt;
-            tname[i] = 0;
-            tname[i-1] = 0;
-            /*break;*/
+            for(int j=0; (i+j)<n; ++j) {
+                ++is_pt;
+                tname[i+j] = 0;
+                tname[i-1+j] = 0;
+            }
+            break;
         }
         if(tname[i] == '[') {
             is_arr = i;
@@ -1536,8 +1538,8 @@ static const char *GetMachType(char* ret, char* _name) {
     else if(strcmp("unsigned char", tname) == 0) strcpy(pt, "u8"), pt+=2;
     /*else if(strcmp("const char", tname) == 0) strcpy(pt, "u8"), pt+=2;*/
     /*else if(strcmp("char", tname) == 0) strcpy(pt, "u8"), pt+=2;*/
-    else if(strcmp("const char", tname) == 0) {if(pt-name > 0) strcpy(pt-1, "str"),pt+=3; else strcpy(pt, "u8"),pt+=2;}
-    else if(strcmp("char", tname) == 0) {if(pt-name > 0) strcpy(pt-1, "str"),pt+=3; else strcpy(pt, "u8"),pt+=2;}
+    else if(strcmp("const char", tname) == 0) {if(is_pt > 0) strcpy(pt-1, "str"),pt+=3; else strcpy(pt, "u8"),pt+=2;}
+    else if(strcmp("char", tname) == 0) {if(is_pt > 0) strcpy(pt-1, "str"),pt+=3; else strcpy(pt, "u8"),pt+=2;}
     else if(strcmp("const void", tname) == 0) {if(pt-name > 0) strcpy(pt-1, "ptr"),pt+=3; /*else strcpy(pt, ""),pt+=0;*/}
     /*else if(strcmp("void", tname) == 0) if(pt-name > 0) strcpy(pt-1, "ptr"),pt+=3; else strcpy(pt, "u8"),pt+=2;*/
     else if(strcmp("void", tname) == 0) {if(pt-name > 0) strcpy(pt-1, "ptr"),pt+=3; /*else strcpy(pt, ""),pt+=0;*/}
