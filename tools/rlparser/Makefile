@@ -106,7 +106,7 @@ raygui_api.$(EXTENSION): ../raygui.h rlparser
 # Target to generate required APIs output files
 parse: raylib_api.$(EXTENSION) raymath_api.$(EXTENSION) rlgl_api.$(EXTENSION) raygui_api.$(EXTENSION)
 
-mach: rlparser
+mach: clean rlparser
 	./rlparser -i ../../src/raylib.h -o raylib.$(EXTENSION) -f $(FORMAT) -d RLAPI
 	./rlparser -i ../../src/raymath.h -o raymath.$(EXTENSION) -f $(FORMAT) -d RMAPI
 	./rlparser -i ../../src/rlgl.h -o rlgl.$(EXTENSION) -f $(FORMAT) -d RLAPI -t "RLGL IMPLEMENTATION"

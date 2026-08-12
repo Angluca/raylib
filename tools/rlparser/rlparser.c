@@ -1498,10 +1498,10 @@ static const char *GetMachType(char* ret, char* _name) {
     strcpy(tname, _name);
     for(; i<n; ++i) {
         if(tname[i] == '*') {
-            is_pt = i;
+            ++is_pt;
             tname[i] = 0;
             tname[i-1] = 0;
-            break;
+            /*break;*/
         }
         if(tname[i] == '[') {
             is_arr = i;
@@ -1516,7 +1516,7 @@ static const char *GetMachType(char* ret, char* _name) {
         strcpy(pt, &tname[is_arr+1]);
         pt += strlen(&tname[is_arr+1]);
     }
-    if(is_pt) {
+    for(i=0; i < is_pt; ++i) {
         *pt = '*';
         pt += 1;
     }
@@ -1534,10 +1534,13 @@ static const char *GetMachType(char* ret, char* _name) {
     else if(strcmp("const GlyphInfo", tname) == 0) strcpy(pt, "GlyphInfo"), pt+=9;
     else if(strcmp("const Matrix", tname) == 0) strcpy(pt, "Matrix"), pt+=6;
     else if(strcmp("unsigned char", tname) == 0) strcpy(pt, "u8"), pt+=2;
-    else if(strcmp("const char", tname) == 0) strcpy(pt, "u8"), pt+=2;
-    else if(strcmp("char", tname) == 0) strcpy(pt, "u8"), pt+=2;
-    else if(strcmp("const void", tname) == 0) if(pt-name > 0) strcpy(pt-1, "ptr"),pt+=3; else strcpy(pt, "u8"),pt+=2;
-    else if(strcmp("void", tname) == 0) if(pt-name > 0) strcpy(pt-1, "ptr"),pt+=3; else strcpy(pt, "u8"),pt+=2;
+    /*else if(strcmp("const char", tname) == 0) strcpy(pt, "u8"), pt+=2;*/
+    /*else if(strcmp("char", tname) == 0) strcpy(pt, "u8"), pt+=2;*/
+    else if(strcmp("const char", tname) == 0) {if(pt-name > 0) strcpy(pt-1, "str"),pt+=3; else strcpy(pt, "u8"),pt+=2;}
+    else if(strcmp("char", tname) == 0) {if(pt-name > 0) strcpy(pt-1, "str"),pt+=3; else strcpy(pt, "u8"),pt+=2;}
+    else if(strcmp("const void", tname) == 0) {if(pt-name > 0) strcpy(pt-1, "ptr"),pt+=3; /*else strcpy(pt, ""),pt+=0;*/}
+    /*else if(strcmp("void", tname) == 0) if(pt-name > 0) strcpy(pt-1, "ptr"),pt+=3; else strcpy(pt, "u8"),pt+=2;*/
+    else if(strcmp("void", tname) == 0) {if(pt-name > 0) strcpy(pt-1, "ptr"),pt+=3; /*else strcpy(pt, ""),pt+=0;*/}
     else {
         const char* pname = tname;
         while(memcmp("const ", pname, 6) == 0) { pname += 6; }
@@ -2370,7 +2373,7 @@ static void ExportParsedData(const char *fileName, int format)
                 /*fprintf(outFile, "  Description: %s\n", structs[i].desc);*/
                 for (int f = 0; f < structs[i].fieldCount; f++)
                 {
-                    memset(ret, 0, 32);
+                    memset(ret, 0, sizeof(ret));
                     fprintf(outFile, "      %s: %s;", structs[i].fieldName[f], GetMachType(ret, structs[i].fieldType[f]));
                     /*if (structs[i].fieldDesc[f][0]) fprintf(outFile, "      // %s\n", structs[i].fieldDesc[f]);*/
                     /*else fprintf(outFile, "\n");*/
@@ -2420,7 +2423,7 @@ static void ExportParsedData(const char *fileName, int format)
                 /*fprintf(outFile, "  Return type: %s\n", callbacks[i].retType);*/
                 /*fprintf(outFile, "  Description: %s\n", callbacks[i].desc);*/
                 for (int p = 0; p < callbacks[i].paramCount; p++) {
-                    memset(ret, 0, 32);
+                    memset(ret, 0, sizeof(ret));
                     /*fprintf(outFile, "  Param[%i]: %s (type: %s)\n", p + 1, callbacks[i].paramName[p], callbacks[i].paramType[p]);*/
                     if((p+1) < callbacks[i].paramCount)
                         /*fprintf(outFile, "%s: %s, ", callbacks[i].paramName[p], GetMachType(ret, callbacks[i].paramType[p]));*/
@@ -2430,7 +2433,7 @@ static void ExportParsedData(const char *fileName, int format)
                         fprintf(outFile, "%s", GetMachType(ret, callbacks[i].paramType[p]));
                 }
                 if(callbacks[i].retType[0] != 0) {
-                    memset(ret, 0, 32);
+                    memset(ret, 0, sizeof(ret));
                     fprintf(outFile, ") %s;\n", GetMachType(ret, callbacks[i].retType));
                 } else fprintf(outFile, ")\n");
                 /*if (callbacks[i].paramCount == 0) fprintf(outFile, "  No input parameters\n");*/
@@ -2465,7 +2468,7 @@ static void ExportParsedData(const char *fileName, int format)
                 /*fprintf(outFile, "  Return type: %s\n", funcs[i].retType);*/
                 /*fprintf(outFile, "  Description: %s\n", funcs[i].desc);*/
                 for (int p = 0; p < funcs[i].paramCount; p++) {
-                    memset(ret, 0, 32);
+                    memset(ret, 0, sizeof(ret));
                     GetMachType(ret, funcs[i].paramType[p]);
                     if(strcmp(ret, "...")==0) {
                         fprintf(outFile, "va: %s", ret);
@@ -2487,13 +2490,17 @@ static void ExportParsedData(const char *fileName, int format)
                         /*fprintf(outFile, "%s: %s", funcs[i].paramName[p], GetMachType(ret, funcs[i].paramType[p]));*/
                 }
                 /*if (funcs[i].paramCount == 0) fprintf(outFile, "  No input parameters\n");*/
-                if(funcs[i].retType[0] != 0) {
-                    memset(ret, 0, 32);
-                    fprintf(outFile, ") %s;\n", GetMachType(ret, funcs[i].retType));
-                    _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, ") %s { ret %s); }\n", GetMachType(ret, funcs[i].retType), _call_fun);
+                memset(ret, 0, sizeof(ret));
+                GetMachType(ret, funcs[i].retType);
+                /*printf("fun = %s ", funcs[i].name);*/
+                /*printf("------retType[0] = %s ", funcs[i].retType);*/
+                /*printf("------ret = %s\n", ret);*/
+                if(ret[0] != 0) {
+                    fprintf(outFile, ") %s;\n", ret);
+                    _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, ") %s { ret %s); }\n", ret, _call_fun);
                 } else {
-                    fprintf(outFile, ")\n");
-                    _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, ") %s { %s); }\n", GetMachType(ret, funcs[i].retType), _call_fun);
+                    fprintf(outFile, ");\n");
+                    _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, ") { %s); }\n", _call_fun);
                 }
                 fprintf(outFile, "%s", snakeFnBuf);
             }
