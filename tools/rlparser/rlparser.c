@@ -2453,7 +2453,11 @@ static void ExportParsedData(const char *fileName, int format)
                 CamelToSnake(funcs[i].name, _fun_name);
                 int j = FindExcessWord(_fun_name);
                 /*fprintf(outFile, "#[library(\"raylib\")] #[symbol(\"%s\")]\n", funcs[i].name);*/
-                fprintf(outFile, "#[library(\"raylib\")]\n");
+
+                if(strstr(inFileName, "raygui.h")) {
+                    fprintf(outFile, "#[library(\"raygui\")]\n");
+                } else
+                    fprintf(outFile, "#[library(\"raylib\")]\n");
                 fprintf(outFile, "ext fun %s(", funcs[i].name);
                 _sfb_len += snprintf(snakeFnBuf+_sfb_len, _sfb_size-_sfb_len, "pub fun %s(", _fun_name + j);
                 _cf_len += snprintf(_call_fun+_cf_len, _cf_size-_cf_len, "%s(", funcs[i].name);
